@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dulces Momentos | Inventario de Vitrina</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#fff8f8; --panel:#ffffff; --rose:#d85a76; --rose2:#f7dce4;
+      --text:#3e2d32; --muted:#7c6b70; --line:#eedfe3;
+      --green:#23855d; --greenbg:#e8f7ef; --amber:#9a6817; --amberbg:#fff4d6;
+      --red:#b33a4a; --redbg:#fde9ed; --blue:#4b5fb7; --bluebg:#eceffd;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select{font:inherit}
+    .hidden{display:none!important}
+    .login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px}
+    .login-card{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:22px;padding:28px;box-shadow:0 12px 40px #5e2d3a18}
+    .brand{font-weight:800;font-size:25px;color:#8d3850}.brand small{display:block;font-size:13px;color:var(--muted);font-weight:600}
+    label{display:block;margin:14px 0 6px;font-size:13px;font-weight:700}
+    input,select{width:100%;padding:11px 12px;border:1px solid #d9cdd0;border-radius:10px;background:#fff;color:var(--text)}
+    .btn{border:0;border-radius:10px;padding:11px 14px;cursor:pointer;font-weight:750}
+    .btn-primary{background:var(--rose);color:#fff}.btn-light{background:#f5eef0;color:var(--text)}
+    .btn-danger{background:var(--redbg);color:var(--red)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .full{width:100%}.msg{margin-top:12px;font-size:13px;min-height:20px}.error{color:var(--red)}.ok{color:var(--green)}
+    .layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+    aside{background:#fff;border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh}
+    nav{margin-top:24px;display:grid;gap:7px}
+    nav button{border:0;background:transparent;text-align:left;padding:11px 12px;border-radius:10px;cursor:pointer;color:var(--text)}
+    nav button.active{background:var(--rose2);color:#8b304b;font-weight:800}
+    main{padding:26px;min-width:0}
+    header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}
+    h1{font-size:25px;margin:0}.sub{color:var(--muted);font-size:13px}
+    .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 4px 18px #5e2d3a0a}
+    .metric{font-size:28px;font-weight:850}.metric-label{font-size:13px;color:var(--muted)}
+    .panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:18px;overflow:hidden}
+    .panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+    .panel h2{font-size:18px;margin:0}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar input{width:220px}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse;min-width:850px}
+    th,td{padding:11px 10px;border-bottom:1px solid #f0e5e8;text-align:left;font-size:13px;white-space:nowrap}
+    th{font-size:12px;color:var(--muted);background:#fffafa}
+    .badge{display:inline-block;padding:5px 8px;border-radius:999px;font-weight:800;font-size:11px}
+    .vigente{background:var(--greenbg);color:var(--green)}
+    .vence{background:var(--amberbg);color:var(--amber)}
+    .vencido{background:var(--redbg);color:var(--red)}
+    .agotado{background:#ececec;color:#666}
+    .forms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .form-actions{display:flex;gap:8px;margin-top:16px}
+    .section{display:none}.section.active{display:block}
+    .mobile-top{display:none}
+    .right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .small{font-size:12px;color:var(--muted)}
+    .report-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:900px){
+      .layout{grid-template-columns:1fr}
+      aside{display:none}
+      .mobile-top{display:flex;position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--line);padding:10px;gap:7px;overflow:auto}
+      .mobile-top button{white-space:nowrap;border:0;border-radius:999px;padding:8px 11px;background:#f8ecef}
+      main{padding:16px}
+      .cards{grid-template-columns:repeat(2,1fr)}
+      .forms,.report-grid{grid-template-columns:1fr}
+      header{align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div id="loginScreen" class="login-wrap">
+    <div class="login-card">
+      <div class="brand">🧁 Dulces Momentos <small>Inventario de vitrina</small></div>
+      <p class="sub">Ingresa con el usuario autorizado de Supabase.</p>
+      <label>Correo</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="correo@ejemplo.com">
+      <label>Contraseña</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+      <button id="loginBtn" class="btn btn-primary full" style="margin-top:18px">Ingresar</button>
+      <div id="loginMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <div id="appShell" class="layout hidden">
+    <aside>
+      <div class="brand">🧁 Dulces Momentos <small>Inventario de Vitrina</small></div>
+      <nav id="nav">
+        <button data-section="inicio" class="active">🏠 Inicio</button>
+        <button data-section="entradas">➕ Entradas</button>
+        <button data-section="ventas">🛒 Ventas</button>
+        <button data-section="inventario">📦 Inventario</button>
+        <button data-section="productos">🍰 Productos</button>
+        <button data-section="reportes">📊 Reportes</button>
+        <button data-section="config">⚙️ Configuración</button>
+      </nav>
+    </aside>
+
+    <div>
+      <div class="mobile-top" id="mobileNav">
+        <button data-section="inicio">Inicio</button>
+        <button data-section="entradas">Entradas</button>
+        <button data-section="ventas">Ventas</button>
+        <button data-section="inventario">Inventario</button>
+        <button data-section="productos">Productos</button>
+        <button data-section="reportes">Reportes</button>
+      </div>
+
+      <main>
+        <header>
+          <div>
+            <h1 id="pageTitle">Inicio</h1>
+            <div class="sub" id="todayText"></div>
+          </div>
+          <div class="right">
+            <span id="userEmail" class="small"></span>
+            <button id="logoutBtn" class="btn btn-light">Cerrar sesión</button>
+          </div>
+        </header>
+
+        <section id="inicio" class="section active">
+          <div class="cards">
+            <div class="card"><div id="mUnits" class="metric">0</div><div class="metric-label">Unidades en vitrina</div></div>
+            <div class="card"><div id="mSoon" class="metric">0</div><div class="metric-label">Por vencer (1 día)</div></div>
+            <div class="card"><div id="mExpired" class="metric">0</div><div class="metric-label">Vencidos</div></div>
+            <div class="card"><div id="mValue" class="metric">S/ 0.00</div><div class="metric-label">Valor de venta en vitrina</div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Inventario en vitrina</h2><button class="btn btn-primary" onclick="goSection('entradas')">+ Nueva entrada</button></div>
+            <div class="table-wrap"><table id="homeTable"></table></div>
+          </div>
+        </section>
+
+        <section id="entradas" class="section">
+          <div class="panel">
+            <h2>Nueva entrada a vitrina</h2>
+            <div class="forms">
+              <div><label>Producto</label><select id="inProduct"></select></div>
+              <div><label>Lote</label><input id="inLot" placeholder="Ej. L001"></div>
+              <div><label>Cantidad</label><input id="inQty" type="number" min="1" step="1"></div>
+              <div><label>Costo unitario (opcional)</label><input id="inCost" type="number" min="0" step="0.01"></div>
+              <div><label>Fecha de ingreso</label><input id="inDate" type="date"></div>
+              <div><label>Fecha de vencimiento</label><input id="inExpiry" type="date"></div>
+            </div>
+            <label>Nota (opcional)</label><input id="inNote" placeholder="Observación">
+            <div class="form-actions"><button id="saveEntryBtn" class="btn btn-primary">Guardar entrada</button></div>
+            <div id="entryMsg" class="msg"></div>
+          </div>
+        </section>
+
+        <section id="ventas" class="section">
+          <div class="panel">
+            <h2>Registrar venta</h2>
+            <p class="sub">Selecciona un lote disponible. La cantidad se descontará de la vitrina.</p>
+            <div class="forms">
+              <div><label>Lote / producto</label><select id="saleBatch"></select></div>
+              <div><label>Cantidad vendida</label><input id="saleQty" type="number" min="1" step="1"></div>
+              <div><label>Precio unitario (S/)</label><input id="salePrice" type="number" min="0" step="0.01"></div>
+            </div>
+            <div class="form-actions"><button id="saveSaleBtn" class="btn btn-primary">Registrar venta</button></div>
+            <div id="saleMsg" class="msg"></div>
+          </div>
+        </section>
+
+        <section id="inventario" class="section">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Inventario completo</h2>
+              <div class="toolbar"><input id="searchInv" placeholder="Buscar producto o lote..."><button id="refreshBtn" class="btn btn-light">Actualizar</button></div>
+            </div>
+            <div class="table-wrap"><table id="inventoryTable"></table></div>
+          </div>
+        </section>
+
+        <section id="productos" class="section">
+          <div class="panel">
+            <h2>Nuevo producto</h2>
+            <div class="forms">
+              <div><label>Nombre</label><input id="pName" placeholder="Ej. Torta de chocolate"></div>
+              <div><label>Categoría</label><input id="pCategory" placeholder="Ej. Tortas"></div>
+              <div><label>Precio de venta (S/)</label><input id="pPrice" type="number" min="0" step="0.01"></div>
+            </div>
+            <div class="form-actions"><button id="saveProductBtn" class="btn btn-primary">Guardar producto</button></div>
+            <div id="productMsg" class="msg"></div>
+          </div>
+          <div class="panel"><h2>Productos registrados</h2><div class="table-wrap"><table id="productsTable"></table></div></div>
+        </section>
+
+        <section id="reportes" class="section">
+          <div class="report-grid">
+            <div class="panel"><h2>Ventas de hoy</h2><div id="rToday" class="metric">S/ 0.00</div><div class="sub" id="rTodayQty">0 unidades</div></div>
+            <div class="panel"><h2>Ventas del mes</h2><div id="rMonth" class="metric">S/ 0.00</div><div class="sub" id="rMonthQty">0 unidades</div></div>
+          </div>
+          <div class="panel"><h2>Últimas ventas</h2><div class="table-wrap"><table id="salesTable"></table></div></div>
+        </section>
+
+        <section id="config" class="section">
+          <div class="panel">
+            <h2>Configuración</h2>
+            <p>Esta versión usa <strong>GitHub Pages</strong> para la web y <strong>Supabase</strong> para guardar los datos.</p>
+            <p class="sub">Las claves públicas de Supabase se configuran en <code>config.js</code>. Nunca coloques la clave <code>service_role</code> en GitHub.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
